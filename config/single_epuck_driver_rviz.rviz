@@ -3,11 +3,9 @@ Panels:
     Help Height: 78
     Name: Displays
     Property Tree Widget:
-      Expanded:
-        - /Prox71/Status1
-        - /Speed1/Status1
-      Splitter Ratio: 0.639118016
-    Tree Height: 318
+      Expanded: ~
+      Splitter Ratio: 0.639118
+    Tree Height: 336
   - Class: rviz/Selection
     Name: Selection
   - Class: rviz/Tool Properties
@@ -16,15 +14,14 @@ Panels:
       - /2D Nav Goal1
       - /Publish Point1
     Name: Tool Properties
-    Splitter Ratio: 0.588679016
+    Splitter Ratio: 0.588679
   - Class: rviz/Views
     Expanded:
       - /Current View1
-      - /Current View1/Position1
     Name: Views
     Splitter Ratio: 0.5
   - Class: rviz/Time
-    Experimental: true
+    Experimental: false
     Name: Time
     SyncMode: 0
     SyncSource: LaserScan
@@ -35,12 +32,12 @@ Visualization Manager:
   Class: ""
   Displays:
     - Alpha: 0.5
-      Cell Size: 0.0500000007
+      Cell Size: 0.05
       Class: rviz/Grid
       Color: 160; 160; 164
       Enabled: true
       Line Style:
-        Line Width: 0.0299999993
+        Line Width: 0.03
         Value: Lines
       Name: Grid
       Normal Cell Count: 0
@@ -60,7 +57,6 @@ Visualization Manager:
       Name: Prox0
       Queue Size: 100
       Topic: /proximity0
-      Unreliable: false
       Value: true
     - Alpha: 0.5
       Buffer Length: 1
@@ -70,7 +66,6 @@ Visualization Manager:
       Name: Prox1
       Queue Size: 100
       Topic: /proximity1
-      Unreliable: false
       Value: true
     - Alpha: 0.5
       Buffer Length: 1
@@ -80,7 +75,6 @@ Visualization Manager:
       Name: Prox2
       Queue Size: 100
       Topic: /proximity2
-      Unreliable: false
       Value: true
     - Alpha: 0.5
       Buffer Length: 1
@@ -90,7 +84,6 @@ Visualization Manager:
       Name: Prox3
       Queue Size: 100
       Topic: /proximity3
-      Unreliable: false
       Value: true
     - Alpha: 0.5
       Buffer Length: 1
@@ -100,7 +93,6 @@ Visualization Manager:
       Name: Prox4
       Queue Size: 100
       Topic: /proximity4
-      Unreliable: false
       Value: true
     - Alpha: 0.5
       Buffer Length: 1
@@ -110,7 +102,6 @@ Visualization Manager:
       Name: Prox5
       Queue Size: 100
       Topic: /proximity5
-      Unreliable: false
       Value: true
     - Alpha: 0.5
       Buffer Length: 1
@@ -120,7 +111,6 @@ Visualization Manager:
       Name: Prox6
       Queue Size: 100
       Topic: /proximity6
-      Unreliable: false
       Value: true
     - Alpha: 0.5
       Buffer Length: 1
@@ -130,7 +120,6 @@ Visualization Manager:
       Name: Prox7
       Queue Size: 100
       Topic: /proximity7
-      Unreliable: false
       Value: true
     - Class: rviz/TF
       Enabled: false
@@ -182,37 +171,36 @@ Visualization Manager:
       Update Interval: 0
       Value: true
       Visual Enabled: true
-    - Angle Tolerance: 0.00999999978
+    - Angle Tolerance: 0.01
       Class: rviz/Odometry
       Color: 255; 255; 0
       Enabled: true
       Keep: 100
-      Length: 0.00999999978
+      Length: 0.01
       Name: Odometry
-      Position Tolerance: 0.00999999978
+      Position Tolerance: 0.01
       Topic: /odom
       Value: true
     - Acceleration properties:
         Acc. vector alpha: 1
         Acc. vector color: 255; 0; 0
-        Acc. vector scale: 0.00999999978
+        Acc. vector scale: 0.01
         Derotate acceleration: false
         Enable acceleration: true
       Axes properties:
-        Axes scale: 0.100000001
+        Axes scale: 0.1
         Enable axes: false
       Box properties:
         Box alpha: 1
         Box color: 255; 0; 0
         Enable box: false
-        x_scale: 0.100000001
-        y_scale: 0.100000001
-        z_scale: 0.100000001
+        x_scale: 0.1
+        y_scale: 0.1
+        z_scale: 0.1
       Class: rviz_imu_plugin/Imu
       Enabled: true
       Name: Imu
       Topic: /accel
-      Unreliable: false
       Value: true
     - Class: rviz/Marker
       Enabled: true
@@ -239,7 +227,7 @@ Visualization Manager:
       Queue Size: 1
       Value: true
     - Class: rviz/Image
-      Enabled: false
+      Enabled: true
       Image Topic: /camera
       Max Value: 1
       Median window: 5
@@ -248,8 +236,7 @@ Visualization Manager:
       Normalize Range: true
       Queue Size: 2
       Transport Hint: raw
-      Unreliable: false
-      Value: false
+      Value: true
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
@@ -273,10 +260,9 @@ Visualization Manager:
       Queue Size: 10
       Selectable: false
       Size (Pixels): 3
-      Size (m): 0.00499999989
+      Size (m): 0.005
       Style: Spheres
       Topic: /scan
-      Unreliable: false
       Use Fixed Frame: true
       Use rainbow: true
       Value: true
@@ -287,7 +273,6 @@ Visualization Manager:
       Enabled: true
       Name: Map
       Topic: /map
-      Unreliable: false
       Value: true
   Enabled: true
   Global Options:
@@ -312,32 +297,33 @@ Visualization Manager:
   Value: true
   Views:
     Current:
-      Class: rviz/FPS
+      Class: rviz/XYOrbit
+      Distance: 0.945416
       Enable Stereo Rendering:
-        Stereo Eye Separation: 0.0599999987
+        Stereo Eye Separation: 0.06
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
+      Focal Point:
+        X: 0.00113173
+        Y: 0.323188
+        Z: 2.33572e-07
       Name: Current View
-      Near Clip Distance: 0.00999999978
-      Pitch: 0.891369343
-      Position:
-        X: 5.35749912
-        Y: -3.03966618
-        Z: 1.25082278
+      Near Clip Distance: 0.01
+      Pitch: 0.689797
       Target Frame: base_link
-      Value: FPS (rviz)
-      Yaw: 3.84217143
+      Value: XYOrbit (rviz)
+      Yaw: 1.5704
     Saved: ~
 Window Geometry:
   Displays:
     collapsed: false
-  Height: 748
+  Height: 772
   Hide Left Dock: false
-  Hide Right Dock: true
+  Hide Right Dock: false
   Image:
-    collapsed: true
-  QMainWindow State: 000000ff00000000fd00000004000000000000017d00000262fc0200000009fb0000001200530065006c0065006300740069006f006e00000001e10000009b0000006400fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c0061007900730100000028000001cd000000dd00fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261fb0000000c00540065006c0065006f007001000001fb0000008f0000004900ffffff000000010000012c00000262fc0200000004fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073000000002800000194000000b000fffffffb0000000a0049006d00610067006500000001c2000000c80000001600fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e10000019700000003000004bf0000003efc0100000002fb0000000800540069006d00650100000000000004bf0000032700fffffffb0000000800540069006d006501000000000000045000000000000000000000033c0000026200000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+    collapsed: false
+  QMainWindow State: 000000ff00000000fd00000004000000000000017d0000027afc0200000009fb0000001200530065006c0065006300740069006f006e00000001e10000009b0000006400fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c0061007900730100000028000001df000000dd00fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261fb0000000c00540065006c0065006f0070010000020d000000950000004900ffffff000000010000012c0000027afc0200000004fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a005600690065007700730100000028000001a4000000b000fffffffb0000000a0049006d00610067006501000001d2000000d00000001600fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e10000019700000003000005ff0000003efc0100000002fb0000000800540069006d00650100000000000005ff000002f600fffffffb0000000800540069006d006501000000000000045000000000000000000000034a0000027a00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   Selection:
     collapsed: false
   Teleop:
@@ -347,7 +333,7 @@ Window Geometry:
   Tool Properties:
     collapsed: false
   Views:
-    collapsed: true
-  Width: 1215
+    collapsed: false
+  Width: 1535
   X: 65
   Y: 24

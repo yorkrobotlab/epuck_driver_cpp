@@ -3,10 +3,14 @@
 #include <math.h>
 #include <time.h>
 #include <sys/time.h>
-#include <bluetooth/bluetooth.h>
-#include <bluetooth/hci.h>
-#include <bluetooth/hci_lib.h>
-#include <bluetooth/rfcomm.h>
+//#include <bluetooth/bluetooth.h>
+//#include <bluetooth/hci.h>
+//#include <bluetooth/hci_lib.h>
+//#include <bluetooth/rfcomm.h>
+#include <stdio.h>
+#include <unistd.h>			//Used for UART
+#include <fcntl.h>			//Used for UART
+#include <termios.h>		//Used for UART
 #include <ros/ros.h>
 #include <sensor_msgs/Range.h>
 #include <sensor_msgs/Image.h>
@@ -70,7 +74,7 @@ bool changedActuators[ACTUATORS_NUM];
 int speedLeft = 0, speedRight = 0;
 unsigned char ledState[LED_NUMBER] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 int stepsLeft = 0, stepsRight = 0;
-int rfcommSock;
+int fd1=0;
 int sock;
 int devId;
 unsigned int bytesToReceive;
@@ -120,205 +124,60 @@ int overflowCountLeft = 0, overflowCountRight = 0;
 
 void clearCommunicationBuffer() {
     
-    char buffer[64];
-    struct timeval timeout;
-    fd_set readfds;
-    int retval;
-    int trials = 0;
-               
-    if(DEBUG_CONNECTION_INIT)std::cout << "[" << epuckname << "] " << "sending enter..." << std::endl;
-    buffer[0] = '\r';
-    FD_ZERO(&readfds);
-    FD_SET(rfcommSock, &readfds);
-    write(rfcommSock, buffer, 1);    
-    while(1) {
-        timeout.tv_sec=0; // The timeout need to be set every time because the "select" may modify it.
-        timeout.tv_usec=500000;        
-        retval = select(rfcommSock+1,&readfds,NULL,NULL,&timeout);
-        if (retval!=0) {
-            int n = read(rfcommSock, buffer, 64);
-            if(DEBUG_CONNECTION_INIT)std::cout << "[" << epuckname << "] " << "read " << n << " bytes" << std::endl;
-            if(DEBUG_CONNECTION_INIT)std::cout << "[" << epuckname << "] " << "content: " << buffer << std::endl;
-            memset(buffer, 0x0, 64);
-        } else {
-            break;
-        }
+    tcflush(fd1, TCIFLUSH);
+}
+void initConnection()
+{
+    //-------------------------
+    //----- SETUP USART 0 -----
+    //-------------------------
+    //At bootup, pins 8 and 10 are already set to UART0_TXD, UART0_RXD (ie the alt0 function) respectively
+    fd1 = -1;
+
+    //OPEN THE UART
+    //The flags (defined in fcntl.h):
+    //	Access modes (use 1 of these):
+    //		O_RDONLY - Open for reading only.
+    //		O_RDWR - Open for reading and writing.
+    //		O_WRONLY - Open for writing only.
+    //
+    //	O_NDELAY / O_NONBLOCK (same function) - Enables nonblocking mode. When set read requests on the file can return immediately with a failure status
+    //											if there is no input immediately available (instead of blocking). Likewise, write requests can also return
+    //											immediately with a failure status if the output can't be written immediately.
+    //
+    //	O_NOCTTY - When set and path identifies a terminal device, open() shall not cause the terminal device to become the controlling terminal for the process.
+    fd1 = open("/dev/ttyAMA0", O_RDWR | O_NOCTTY | O_NDELAY);		//Open in non blocking read/write mode
+    if (fd1 == -1)
+    {
+        //ERROR - CAN'T OPEN SERIAL PORT
+        printf("Error - Unable to open UART.  Ensure it is not in use by another application\n");
     }
-    
-    if(DEBUG_CONNECTION_INIT)std::cout << "[" << epuckname << "] " << "requesting version..." << std::endl;
-    buffer[0] = 'V';
-    buffer[1] = '\r';
-    FD_ZERO(&readfds);
-    FD_SET(rfcommSock, &readfds);
-    write(rfcommSock, buffer, 2);
-    trials = 0;
-    while(1) {
-        timeout.tv_sec=0; // The timeout need to be set every time because the "select" may modify it.
-        timeout.tv_usec=500000;
-        retval = select(rfcommSock+1, &readfds, NULL, NULL, &timeout);
-        if (retval!=0) {
-            int n = read(rfcommSock, buffer, 64);
-            if(DEBUG_CONNECTION_INIT)std::cout << "[" << epuckname << "] " << "read " << n << " bytes" << std::endl;
-            if(DEBUG_CONNECTION_INIT)std::cout << "[" << epuckname << "] " << "content: " << buffer << std::endl;
-            memset(buffer, 0x0, 64);
-        } else {
-            trials++;
-            if(trials >= 1) {
-                break;
-            }
-        }
-    }
-    
+
+    //CONFIGURE THE UART
+    //The flags (defined in /usr/include/termios.h - see http://pubs.opengroup.org/onlinepubs/007908799/xsh/termios.h.html):
+    //	Baud rate:- B1200, B2400, B4800, B9600, B19200, B38400, B57600, B115200, B230400, B460800, B500000, B576000, B921600, B1000000, B1152000, B1500000, B2000000, B2500000, B3000000, B3500000, B4000000
+    //	CSIZE:- CS5, CS6, CS7, CS8
+    //	CLOCAL - Ignore modem status lines
+    //	CREAD - Enable receiver
+    //	IGNPAR = Ignore characters with parity errors
+    //	ICRNL - Map CR to NL on input (Use for ASCII comms where you want to auto correct end of line characters - don't use for bianry comms!)
+    //	PARENB - Parity enable
+    //	PARODD - Odd parity (else even)
+    struct termios options;
+    tcgetattr(fd1, &options);
+    options.c_cflag = B115200 | CS8 | CLOCAL | CREAD;		//<Set baud rate
+    options.c_iflag = IGNPAR;
+    options.c_oflag = 0;
+    options.c_lflag = 0;
+    tcflush(fd1, TCIFLUSH);
+    tcsetattr(fd1, TCSANOW, &options);
 }
 
-int initConnectionWithRobotId(int robotId) {
-     std::stringstream ss;        
-     
-    // open device
-    devId = hci_get_route(NULL);
-    if (devId < 0) {
-        ss.str("");
-        ss << "[" << epuckname << "] " << "Error, can't get bluetooth adapter ID";
-        if(DEBUG_CONNECTION_INIT)perror(ss.str().c_str());
-        return -1;
-    }
-
-    // open socket
-    sock = hci_open_dev(devId);
-    if (sock < 0) {
-        ss.str("");
-        ss << "[" << epuckname << "] " << "Error, can't open bluetooth adapter";
-        if(DEBUG_CONNECTION_INIT)perror(ss.str().c_str());
-        return -1;
-    }
-
-    int trials = 3;     // Try looking for the robot 3 times before giving up.
-    while(trials) {
-        // query
-        if(DEBUG_CONNECTION_INIT)std::cout << "[" << epuckname << "] " << "Scanning bluetooth:" << std::endl;
-        //int length  = 8; /* ~10 seconds */
-        int length  = 4; /* ~5 seconds */
-        inquiry_info *info = NULL;
-        int devicesCount = 0;
-        while(1) {
-            // device id, query length (last 1.28 * length seconds), max devices, lap ??, returned array, flag
-            devicesCount = hci_inquiry(devId, length, 255, NULL, &info, IREQ_CACHE_FLUSH);
-            if (devicesCount < 0) {
-                ss.str("");
-                ss << "[" << epuckname << "] " << "Error, can't query bluetooth";
-                if(DEBUG_CONNECTION_INIT)perror(ss.str().c_str());
-                if(errno!=EBUSY) {      // EBUSY means the Bluetooth device is currently used by another process (this happens when 
-                    close(sock);        // we want to connect to multiple robots simultaneously); in this case wait a little and retry.
-                    return -1;          // All others errors are treated normally.
-                } else {
-                    usleep(1000000);
-                }
-            } else {
-                break;
-            }    
-        }
-        
-        bool found = false;
-        for (int i = 0; i < devicesCount; i++) {
-            char addrString[19];
-            char addrFriendlyName[256];
-            ba2str(&(info+i)->bdaddr, addrString);
-            if (hci_read_remote_name(sock, &(info+i)->bdaddr, 256, addrFriendlyName, 0) < 0) {
-                strcpy(addrFriendlyName, "[unknown]");
-            }
-            if(DEBUG_CONNECTION_INIT)std::cout << "[" << epuckname << "] " << "\t" <<  addrString << " " << addrFriendlyName << std::endl;
-            if (strncmp("e-puck_", addrFriendlyName, 7) == 0) {
-                int id;
-                if (sscanf(addrFriendlyName + 7, "%d", &id) && (id == robotId)) {
-                    if(DEBUG_CONNECTION_INIT)std::cout << "[" << epuckname << "] " << "Contacting e-puck " << id << std::endl;
-                
-                    // set the connection parameters (who to connect to)
-                    struct sockaddr_rc addr;
-                    addr.rc_family = AF_BLUETOOTH;
-                    addr.rc_channel = (uint8_t) 1;
-                    addr.rc_bdaddr = (info+i)->bdaddr;
-                   
-                    // allocate a socket
-                    rfcommSock = socket(AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
-                    
-                    // connect to server
-                    int status = ::connect(rfcommSock, (struct sockaddr *)&addr, sizeof(addr));
-                    
-                    if (status == 0) {
-                        clearCommunicationBuffer();
-                        found = true;
-                    } else {                     
-                        ss.str("");
-                        ss << "[" << epuckname << "] " << "Error, can't connect to rfcomm socket";
-                        if(DEBUG_CONNECTION_INIT)perror(ss.str().c_str());
-                        return -1;
-                    }
-                    break;
-                }
-            }
-        }
-        if(found) {
-            if(hci_close_dev(sock) < 0) {
-                ss.str("");
-                ss << "[" << epuckname << "] " << "Can't close HCI device";
-                if(DEBUG_CONNECTION_INIT)perror(ss.str().c_str());
-            }
-            return 0;
-        } else {
-            trials--;
-        }
-    }
-    if(hci_close_dev(sock) < 0) {
-        ss.str("");
-        ss << "[" << epuckname << "] " << "Can't close HCI device";
-        if(DEBUG_CONNECTION_INIT)perror(ss.str().c_str());
-    }
-    return -1;
-    
-}
-
-int initConnectionWithRobotAddress(const char *address) {
-
-    std::stringstream ss;
-    struct sockaddr_rc addr;    // set the connection parameters (who to connect to)
-    addr.rc_family = AF_BLUETOOTH;
-    addr.rc_channel = (uint8_t) 1;
-    str2ba(address, &addr.rc_bdaddr);
-               
-    // allocate a socket
-    rfcommSock = socket(AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
-                
-    // connect to server
-    int status = ::connect(rfcommSock, (struct sockaddr *)&addr, sizeof(addr));
-                
-    if (status == 0) {
-        clearCommunicationBuffer();
-        return 0;
-    } else {                      
-        ss.str("");
-        ss << "[" << epuckname << "] " << "Error, can't connect to rfcomm socket";
-        if(DEBUG_CONNECTION_INIT)perror(ss.str().c_str());
-        return -1;
-    }
-
-}
 
 void closeConnection() {
-    std::stringstream ss; 
     
-    if(close(rfcommSock) < 0) {
-        ss.str("");
-        ss << "[" << epuckname << "] " << "Can't close rfcomm socket";
-        if(DEBUG_CONNECTION_INIT)perror(ss.str().c_str());
-    }
-
-//    if(shutdown(rfcommSock, SHUT_RDWR) < 0) {
-//        ss.str("");
-//        ss << "[" << epuckname << "] " << "Can't shutdown rfcomm socket";
-//        if(DEBUG_CONNECTION_INIT)perror(ss.str().c_str());
-//    } else {
-//        if(DEBUG_CONNECTION_INIT)std::cout << "[" << epuckname << "] " << "rfcomm shutdown correctly" << std::endl;
-//    }
+    //----- CLOSE THE UART -----
+    close(fd1);
 }
 
 void updateActuators() {
@@ -333,7 +192,7 @@ void updateActuators() {
         buff[3] = speedRight&0xFF;
         buff[4] = (speedRight>>8)&0xFF;
         buff[5] = 0;
-        write(rfcommSock, buff, 6);
+        write(fd1, buff, 6);
     }
     
     if(changedActuators[LEDS]) {
@@ -347,7 +206,7 @@ void updateActuators() {
             buff[pos++] = ledState[i];
         }
         buff[pos] = 0;
-        write(rfcommSock, buff, pos + 1);
+        write(fd1, buff, pos + 1);
     }
     
     if(changedActuators[MOTORS_POS]) {
@@ -358,45 +217,45 @@ void updateActuators() {
         buff[3] = stepsRight&0xFF;
         buff[4] = (stepsRight>>8)&0xFF;
         buff[5] = 0;
-        write(rfcommSock, buff, 6);
+        write(fd1, buff, 6);
     }
 
 }
 
 void updateSensorsData() {
     struct timeval timeout;
-    fd_set readfds;
+   // fd_set readfds;
     int retval;
     int trials = 0;
     unsigned int bufIndex = 0;
     unsigned int bytesRead = 0;
     
     memset(robotToPcBuff, 0x0, 255);
-    FD_ZERO(&readfds);
-    FD_SET(rfcommSock, &readfds);
-    write(rfcommSock, pcToRobotBuff, bytesToSend);
+   //FD_ZERO(&readfds);
+  // FD_SET(fd1, &readfds);
+    write(fd1, pcToRobotBuff, bytesToSend);
     bytesRead = 0;
     if(DEBUG_UPDATE_SENSORS_TIMING)gettimeofday(&lastTime3, NULL);
     while(bytesRead < bytesToReceive) {
         timeout.tv_sec=READ_TIMEOUT_SEC; // The timeout need to be set every time because the "select" may modify it.
         timeout.tv_usec=READ_TIMEOUT_USEC;                
 	if(DEBUG_UPDATE_SENSORS_TIMING)gettimeofday(&lastTime2, NULL);
-        retval = select(rfcommSock+1, &readfds, NULL, NULL, &timeout);
+       // retval = select(fd1+1, &readfds, NULL, NULL, &timeout);
         if(DEBUG_UPDATE_SENSORS_TIMING)gettimeofday(&currentTime2, NULL);
-        if(DEBUG_UPDATE_SENSORS_TIMING)std::cout << "[" << epuckname << "] " << "sensors data read in " << double((currentTime2.tv_sec*1000000 + currentTime2.tv_usec)-(lastTime2.tv_sec*1000000 + lastTime2.tv_usec))/1000000.0 << " sec" << std::endl;
-        if (retval>0) {
-            int n = read(rfcommSock, &robotToPcBuff[bytesRead], bytesToReceive-bytesRead);
-            //if(DEBUG_OTHERS)std::cout << "read " << n << " / " << bytesToReceive << " bytes" << std::endl;
+       if(DEBUG_UPDATE_SENSORS_TIMING)std::cout << "[" << epuckname << "] " << "sensors data read in " << double((currentTime2.tv_sec*1000000 + currentTime2.tv_usec)-(lastTime2.tv_sec*1000000 + lastTime2.tv_usec))/1000000.0 << " sec" << std::endl;
+     //  if (retval>0) {
+
+             int n = read(fd1, &robotToPcBuff[bytesRead], bytesToReceive-bytesRead);
             bytesRead += n;
-            consecutiveReadTimeout = 0;
-        } else if(retval==0) {
-            if(DEBUG_COMMUNICATION_ERROR)std::cout << "[" << epuckname << "] " << "sensors read timeout" << std::endl;
-            consecutiveReadTimeout++;
-            break;
-        } else {
-            if(DEBUG_COMMUNICATION_ERROR)perror("sensors read error");
-            break;
-        }
+       //     consecutiveReadTimeout = 0;
+      //  } else if(retval==0) {
+      //      if(DEBUG_COMMUNICATION_ERROR)std::cout << "[" << epuckname << "] " << "sensors read timeout" << std::endl;
+      //      consecutiveReadTimeout++;
+      //     break;
+     //   } else {
+      //      if(DEBUG_COMMUNICATION_ERROR)perror("sensors read error");
+       //     break;
+      //  }
     }
     if(bytesRead == bytesToReceive) {       
         if(DEBUG_UPDATE_SENSORS_TIMING)gettimeofday(&currentTime3, NULL);
@@ -450,39 +309,38 @@ void updateSensorsData() {
             if(DEBUG_UPDATE_SENSORS_DATA)std::cout << "[" << epuckname << "] " << "mic: " << micData[0] << "," << micData[1] << "," << micData[2] << std::endl;
         }            
     } else {
-        if(DEBUG_UPDATE_SENSORS_DATA)std::cout << "[" << epuckname << "] " << "discard the sensors data" << std::endl;
-    }
+        if(DEBUG_UPDATE_SENSORS_DATA)std::cout << "[" << epuckname << "] " << "discard the sensors data " << bytesRead <<" "<< bytesToReceive << std::endl;
+     }
             
     if(enabledSensors[CAMERA]) {
         char buff[2];
         int imageBytesToReceive = imageSize;
         buff[0] = -'I';
         buff[1] = 0;
-        FD_ZERO(&readfds);
-        FD_SET(rfcommSock, &readfds);
-        write(rfcommSock, buff, 2);        
+       // FD_ZERO(&readfds);
+       // FD_SET(fd1, &readfds);
+        write(fd1, buff, 2);        
         bytesRead = 0;
         if(DEBUG_UPDATE_SENSORS_TIMING)gettimeofday(&lastTime3, NULL);
         while(bytesRead < imageBytesToReceive) {
             timeout.tv_sec=READ_TIMEOUT_SEC;
             timeout.tv_usec=READ_TIMEOUT_USEC;
             if(DEBUG_UPDATE_SENSORS_TIMING)gettimeofday(&lastTime2, NULL);
-            retval = select(rfcommSock+1, &readfds, NULL, NULL, &timeout);
+           // retval = select(fd1+1, &readfds, NULL, NULL, &timeout);
             if(DEBUG_UPDATE_SENSORS_TIMING)gettimeofday(&currentTime2, NULL);
             if(DEBUG_UPDATE_SENSORS_TIMING)std::cout << "[" << epuckname << "] " << "camera data read in " << double((currentTime2.tv_sec*1000000 + currentTime2.tv_usec)-(lastTime2.tv_sec*1000000 + lastTime2.tv_usec))/1000000.0 << " sec" << std::endl;
-            if (retval>0) {
-                int n = read(rfcommSock, &camData[bytesRead], imageBytesToReceive-bytesRead);
-                //if(DEBUG_OTHERS)std::cout << "[" << epuckname << "] " << "camera: read " << bytesRead << " / " << imageBytesToReceive << " bytes" << std::endl;
+           // if (retval>0) {
+                int n = read(fd1, &camData[bytesRead], imageBytesToReceive-bytesRead);
                 bytesRead += n;
                 consecutiveReadTimeout = 0;
-            } else if(retval==0) {
-                if(DEBUG_COMMUNICATION_ERROR)std::cout << "[" << epuckname << "] " << "camera read timeout" << std::endl;
-                consecutiveReadTimeout++;
-                break;
-            } else {
-                if(DEBUG_COMMUNICATION_ERROR)perror("camera read error"); 
-                break;
-            }
+         //   } else if(retval==0) {
+         //       if(DEBUG_COMMUNICATION_ERROR)std::cout << "[" << epuckname << "] " << "camera read timeout" << std::endl;
+         //       consecutiveReadTimeout++;
+         //       break;
+         //   } else {
+         //       if(DEBUG_COMMUNICATION_ERROR)perror("camera read error"); 
+         //       break;
+         //   }
         }
         if(bytesRead == imageBytesToReceive) {          
             if(DEBUG_UPDATE_SENSORS_TIMING)gettimeofday(&currentTime3, NULL);
@@ -495,20 +353,6 @@ void updateSensorsData() {
         }     
         
     }
-    
-//    while(1) {
-//        char tempBuff[255];
-//        timeout.tv_sec=0;
-//        timeout.tv_usec=300000;
-//        retval = select(rfcommSock+1, &readfds, NULL, NULL, &timeout);
-//        if (retval!=0) {
-//            int n = read(rfcommSock, &tempBuff[0], 255);
-//            if(DEBUG_OTHERS)std::cout << "[" << epuckname << "] " << "resync: read " << n << " bytes" << std::endl;
-//        } else {
-//            if(DEBUG_OTHERS)std::cout << "[" << epuckname << "] " << "resync: read timeout" << std::endl;
-//            break;
-//        }
-//    }    
     
 }
 
@@ -1189,15 +1033,8 @@ int main(int argc,char *argv[]) {
         std::cout << "[" << epuckname << "] " << "image offset: " << camXoffset << ", " << camYoffset << std::endl;
     }
     
-    if(epuckAddress.compare("")==0) {   // Search the robot id
-        if(initConnectionWithRobotId(robotId)<0) {
-            return -1;
-        }
-    } else {    // Connect directly to the address
-        if(initConnectionWithRobotAddress(epuckAddress.c_str())<0) {
-            return -1;
-        }
-    }
+    initConnection();
+
     
     bufIndex = 0;
     bytesToReceive = 0;
@@ -1310,27 +1147,27 @@ int main(int argc,char *argv[]) {
         // Configure camera params.
         char buff[30];
         struct timeval timeout;
-        fd_set readfds;
+        //fd_set readfds;
         int retval;
         int bytesRead;
         memset(buff, 0x0, 30);
         sprintf(buff,"J,%d,%d,%d,%d,%d,%d\r", camMode, camWidth, camHeight, camZoom, camXoffset, camYoffset);
-        FD_ZERO(&readfds);
-        FD_SET(rfcommSock, &readfds);
-        write(rfcommSock, buff, strlen(buff));
+       // FD_ZERO(&readfds);
+       // FD_SET(fd1, &readfds);
+        write(fd1, buff, strlen(buff));
         bytesRead = 0;
         while(bytesRead < 3) {
             timeout.tv_sec=READ_TIMEOUT_SEC;
             timeout.tv_usec=READ_TIMEOUT_USEC;
-            retval = select(rfcommSock+1, &readfds, NULL, NULL, &timeout);
-            if (retval!=0) {
-                int n = read(rfcommSock, &buff[bytesRead], 3-bytesRead);
+           // retval = select(fd1+1, &readfds, NULL, NULL, &timeout);
+           // if (retval!=0) {
+                int n = read(fd1, &buff[bytesRead], 3-bytesRead);
                 if(DEBUG_CAMERA_INIT)std::cout << "[" << epuckname << "] " << "cam init: read " << bytesRead << " / " << 3 << "bytes" << std::endl;
                 bytesRead += n;
-            } else {
-                if(DEBUG_CAMERA_INIT)std::cout << "[" << epuckname << "] " << "cam init: read timeout" << std::endl;
-                break;
-            }
+          //  } else {
+           //     if(DEBUG_CAMERA_INIT)std::cout << "[" << epuckname << "] " << "cam init: read timeout" << std::endl;
+          //      break;
+          //  }
         }
         if(bytesRead == 3) {                       
             if(DEBUG_CAMERA_INIT)std::cout << "[" << epuckname << "] " << "camera init correctly (" << buff[0] << buff[1] << buff[2] << ")" << std::endl;  
