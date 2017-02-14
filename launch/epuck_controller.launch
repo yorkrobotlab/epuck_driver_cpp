@@ -22,7 +22,7 @@
     <arg name="mot_pos_en" default="true"/>
     <arg name="floor_en" default="false"/>
     <arg name="mot_speed_en" default="true"/>
-    <arg name="mic_en" default="true"/>    
+    <arg name="mic_en" default="false"/>    
     <!-- Camera parameters: if you put -1 then a default value will be assigned. -->
     <!-- Remember that the maximum buffer that the e-puck can handle is 3200 bytes. -->
     <arg name="cam_width" default="-1" /> <!-- By default width = 160 -->
@@ -33,28 +33,6 @@
     <arg name="cam_y_offset" default="-1" />     
     <!-- <arg name="ros_rate" default="20" /> --> <!-- This feature is disable since causes connection stability problems. -->
     
-    <node pkg="epuck_driver_cpp" type="epuck_driver_cpp" name="$(arg epuck_name)" output="screen">
-        <param name="epuck_id" value="$(arg epuck_id)"/>
-        <param name="epuck_address" value="$(arg epuck_address)"/>
-        <param name="epuck_name" value="$(arg epuck_name)"/>
-        <param name="xpos" value="$(arg xpos)"/>
-	<param name="ypos" value="$(arg ypos)"/>
-	<param name="theta" value="$(arg theta)"/> 
-        <param name="camera" value="$(arg cam_en)"/>
-        <param name="accelerometer" value="$(arg acc_en)"/>
-        <param name="proximity" value="$(arg prox_en)"/>
-        <param name="motor_position" value="$(arg mot_pos_en)"/>
-        <param name="floor" value="$(arg floor_en)"/>
-        <param name="motor_speed" value="$(arg mot_speed_en)"/>
-	<param name="microphone" value="$(arg mic_en)"/> 
-        <param name="cam_width" value="$(arg cam_width)"/>
-        <param name="cam_height" value="$(arg cam_height)"/>
-        <param name="cam_zoom" value="$(arg cam_zoom)"/>
-        <param name="cam_mode" value="$(arg cam_mode)"/>
-        <param name="cam_x_offset" value="$(arg cam_x_offset)"/>
-        <param name="cam_y_offset" value="$(arg cam_y_offset)"/>   
-        <!--<param name="ros_rate" value="$(arg ros_rate)"/> -->
-    </node>
     
     <param name="robot_description" textfile="$(find epuck_driver_cpp)/urdf/epuck_urdf.xml"/>
     <node name="epuck_state_publisher" pkg="robot_state_publisher" type="state_publisher">
